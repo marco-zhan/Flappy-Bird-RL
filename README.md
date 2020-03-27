@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Implementation of one of the most famous arcade games -- Flappy Bird using Python and pygames
+Implementation of one of the most famous arcade games -- Flappy Bird using Python and Pygame
 
 ## Technologies
 - Python 3.7.4 
@@ -19,6 +19,7 @@ Implementation of one of the most famous arcade games -- Flappy Bird using Pytho
 - Settings can be changed by players
 
 ## Changable settings
+All the settings below can be changed from the params.py file 
 - Frame per second
 - Pipe movement speed
 - Pipe horizontal gap size

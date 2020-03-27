@@ -12,7 +12,7 @@ pipe_x_vel = -4 # pipe moving velocity in pixel
 
 # bird settings
 bird_drop_y = 1 # bird downward accelration in pixels
-bird_flap_acc_y = -7 # bird flap acceleration in pixels
+bird_flap_acc_y = -8 # bird flap acceleration in pixels
 bird_max_drop_y = 10 # bird maximum downward acceleration
 bird_flap_h_angle = 20 # bird flap horizontal up angle
 bird_drop_h_angle = -3 # bird dropping angle 
