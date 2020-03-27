@@ -3,7 +3,7 @@ from pygame.locals import *
 import random
 from itertools import cycle
 import sys
-import params
+import params # files for all constants
 
 class Image_Sprite(pygame.sprite.Sprite):
         def __init__(self,width,height):
@@ -118,7 +118,9 @@ class Flappy():
             # show the welcome screen
             initial_pose = self.show_welcome_screen()
             # if welcome screen returns, use the returned position to start main game
-            self.start_main_game(initial_pose)
+            crash_info = self.main_game(initial_pose)
+            # if crash_info returns, use the returned position to show gameover screen
+            self.show_gameover_screen(crash_info)
 
     def show_welcome_screen(self):
         # coordinates of all items
@@ -166,7 +168,7 @@ class Flappy():
             pygame.display.update()
             self.fps_clock.tick(self.fps)
     
-    def start_main_game(self,initial_pose):
+    def main_game(self,initial_pose):
         score = 0
 
         bird_index = 0
@@ -193,6 +195,18 @@ class Flappy():
                             [new_pipe_2[1][0]+params.pipe_hgap,new_pipe_2[1][1]]
                       ]
 
+        bird_flapping = False
+        bird_max_drop_y = params.bird_max_drop_y
+        bird_drop_y = params.bird_drop_y
+        bird_flap_acc_y = params.bird_flap_acc_y
+        bird_drop_h_angle = params.bird_drop_h_angle
+        bird_flap_h_angle = params.bird_flap_h_angle
+        bird_min_h_angle = params.bird_min_h_angle
+
+        bird_vel_y = bird_flap_acc_y
+        bird_h_angle = bird_flap_h_angle
+        
+
         while True:
             for event in pygame.event.get():
                 if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
@@ -201,16 +215,29 @@ class Flappy():
                 if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
                     if (bird_y + self.bird[0].get_height() / 2) > 0:
                         self.sound_wing.play()
-                        bird_y -= 10
-            
+                        bird_flapping = True
+                        bird_vel_y = bird_flap_acc_y
+                        
             # check if the bird is crashed
             if self.bird_crashed([bird_x,bird_y,bird_index_seq[bird_index]],upper_pipes,lower_pipes):
-                self.show_gameover_screen()
+                return [bird_x,bird_y,bird_vel_y,bird_h_angle,base_line_x,upper_pipes,lower_pipes,score]
+            # bird movement
+            if bird_h_angle >= bird_min_h_angle:
+                bird_h_angle += bird_drop_h_angle  
+
+            if bird_vel_y < bird_max_drop_y and bird_flapping == False:
+                bird_vel_y += bird_drop_y
+
+            if bird_flapping:
+                bird_flapping = False
+                bird_h_angle = bird_flap_h_angle
+
+            bird_y += bird_vel_y
             
             bird_mid_x = bird_x + self.bird[0].get_width() / 2
             for upper_pipe in upper_pipes:
                 upper_pipe_mid_x = upper_pipe[0] + self.pipe[0].get_width() / 2
-                if upper_pipe_mid_x <= bird_mid_x <= upper_pipe_mid_x + (- params.pipe_x_val):
+                if upper_pipe_mid_x <= bird_mid_x <= upper_pipe_mid_x + (- params.pipe_x_vel):
                     self.sound_point.play()
                     score += 1
 
@@ -219,11 +246,12 @@ class Flappy():
             bird_index = (bird_index+1) % 4
 
             for upper_pipe, lower_pipe in zip(upper_pipes,lower_pipes):
-                upper_pipe[0] += params.pipe_x_val
-                lower_pipe[0] += params.pipe_x_val 
+                upper_pipe[0] += params.pipe_x_vel
+                lower_pipe[0] += params.pipe_x_vel 
 
             self.screen.blit(self.background,(0,0))
-            self.screen.blit(self.bird[bird_index_seq[bird_index]],(bird_x,bird_y))
+            bird_surface = pygame.transform.rotate(self.bird[bird_index_seq[bird_index]],bird_h_angle)
+            self.screen.blit(bird_surface,(bird_x,bird_y))
             
             # move the pipes to the left and draw them
             for upper_pipe, lower_pipe in zip(upper_pipes,lower_pipes):         
@@ -231,7 +259,7 @@ class Flappy():
                 self.screen.blit(self.pipe[1], (lower_pipe[0], lower_pipe[1]))
 
             # draw new pipes when the leftmost pipe is touching the left border
-            if 0 < upper_pipes[0][0] < -(params.pipe_x_val-1):
+            if 0 < upper_pipes[0][0] < -(params.pipe_x_vel-1):
                 new_pipe = self.generate_random_pipes()
                 upper_pipes.append(new_pipe[0])
                 lower_pipes.append(new_pipe[1])
@@ -245,8 +273,49 @@ class Flappy():
             pygame.display.update()
             self.fps_clock.tick(self.fps)
 
-    def show_gameover_screen(self):
-        pass
+    def show_gameover_screen(self,crash_info):
+        bird_x,bird_y,bird_vel_y,bird_h_angle,base_line_x,upper_pipes,lower_pipes,score = crash_info
+
+        bird_max_drop_y = params.bird_max_drop_y
+        bird_drop_y = params.bird_drop_y
+        bird_drop_h_angle = params.bird_drop_h_angle
+        bird_min_h_angle = params.bird_min_h_angle
+
+        bird_height = self.bird[0].get_height()
+
+        while True:
+            for event in pygame.event.get():
+                if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                    pygame.quit()
+                    sys.exit()
+                if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+                    if bird_y + bird_height > self.base_line_y - 1:
+                        return
+            
+            if bird_y + bird_height < self.base_line_y - 1:
+                bird_y += bird_vel_y
+
+            if bird_vel_y < 15:
+                bird_vel_y += (bird_drop_y+1)
+
+            if bird_h_angle >= bird_min_h_angle:
+                bird_h_angle += (bird_drop_h_angle*3) 
+
+            self.screen.blit(self.background, (0,0))
+
+            for upper_pipe, lower_pipe in zip(upper_pipes, lower_pipes):
+                self.screen.blit(self.pipe[0], (upper_pipe[0], upper_pipe[1]))
+                self.screen.blit(self.pipe[1], (lower_pipe[0], lower_pipe[1]))
+
+            self.screen.blit(self.base_line, (base_line_x, self.base_line_y))
+            self.show_score(score)
+
+            bird_surface = pygame.transform.rotate(self.bird[1], bird_h_angle)
+
+            self.screen.blit(bird_surface, (bird_x,bird_y))
+
+            self.fps_clock.tick(self.fps)
+            pygame.display.update()
     
     def show_score(self,score):
         score_digits = [int(digits) for digits in list(str(score))]
