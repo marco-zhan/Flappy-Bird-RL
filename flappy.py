@@ -408,7 +408,7 @@ class Flappy():
         reward = 0
         terminated = False
 
-        if action == 'flap':
+        if action[0] == 1:
             # if action is flap
             if (self.bird_y + self.bird[0].get_height() / 2) > 0:
                 self.sound_wing.play()
