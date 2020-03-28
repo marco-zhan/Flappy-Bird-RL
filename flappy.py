@@ -54,7 +54,7 @@ class Flappy():
             'assets/sprites/pipe-red.png']
 
         # start the main game
-        # self.init_game()
+        self.init_game()
 
     def init_game(self):
         pygame.init()
