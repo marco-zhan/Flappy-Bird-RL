@@ -55,6 +55,12 @@ class Flappy_DQN():
         weight_conv3 = self.weight_variable([3,3,64,64])
         bias_conv3 = self.bias_variable([64])
 
+        weight_dense1 = self.weight_variable([1600,512])
+        bias_dense1 = self.bias_variable([512])
+
+        weight_dense2 = self.weight_variable(([512,[ACTIONS]]))
+        bias_dense2 = self.bias_variable([ACTIONS])
+
         # create input layer
         input_layer = tf.placeholder("float",[None,80,80,4])
 
@@ -63,13 +69,20 @@ class Flappy_DQN():
         hidden_maxpool1 = self.max_pool_2d(hidden_conv1)
 
         hidden_conv2 = tf.nn.relu(self.conv2d(hidden_maxpool1,weight_conv2,2) + bias_conv2)
-        hideen_maxpool2 = tf.nn.relu(hidden_conv2)
+        hidden_maxpool2 = tf.nn.relu(hidden_conv2)
 
-        hidden_conv3 = tf.nn.relu(self.conv2d(hideen_maxpool2,weight_conv3,1) + bias_conv3)
+        hidden_conv3 = tf.nn.relu(self.conv2d(hidden_maxpool2,weight_conv3,1) + bias_conv3)
+        hidden_maxpool3 = tf.nn.relu(hidden_conv3)
+
+        hidden_flat = tf.reshape(hidden_maxpool3, [-1, 1600])
+
+        hidden_dense1 = tf.nn.relu(tf.matmul(hidden_flat, weight_dense1) + bias_dense1)
+
+        # readout layer
+        readout = tf.matmul(hidden_dense1, weight_dense2) + bias_dense2
+
+        return input_layer, readout, hidden_dense1
         
-
-        
-
 
     def get_action(self):
         pass 
