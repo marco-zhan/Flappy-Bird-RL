@@ -25,33 +25,33 @@ class Flappy():
         self.base_line_y = 0.8*self.screen_height # ground y
 
         # assets paths
-        self.background_path_list = ['assets/sprites/background-day.png',
-                                     'assets/sprites/background-night.png']
+        self.background_path_list = ['../assets/sprites/background-day.png',
+                                     '../assets/sprites/background-night.png']
         self.birds_path_list = [
                                 # Red birds
                                 [
-                                    'assets/sprites/redbird-upflap.png',      
-                                    'assets/sprites/redbird-midflap.png',     
-                                    'assets/sprites/redbird-downflap.png',      
+                                    '../assets/sprites/redbird-upflap.png',      
+                                    '../assets/sprites/redbird-midflap.png',     
+                                    '../assets/sprites/redbird-downflap.png',      
                                 ],
                                 # Blue birds
                                 [
-                                    'assets/sprites/bluebird-upflap.png',        
-                                    'assets/sprites/bluebird-midflap.png', 
-                                    'assets/sprites/bluebird-downflap.png',
+                                    '../assets/sprites/bluebird-upflap.png',        
+                                    '../assets/sprites/bluebird-midflap.png', 
+                                    '../assets/sprites/bluebird-downflap.png',
                                 ],
                                 # Yellow birds
                                 [
-                                    'assets/sprites/yellowbird-upflap.png',
-                                    'assets/sprites/yellowbird-midflap.png',
-                                    'assets/sprites/yellowbird-downflap.png',
+                                    '../assets/sprites/yellowbird-upflap.png',
+                                    '../assets/sprites/yellowbird-midflap.png',
+                                    '../assets/sprites/yellowbird-downflap.png',
                                 ],
         ]
-        self.message_path = 'assets/sprites/message.png'
-        self.base_line_path = 'assets/sprites/base.png'
+        self.message_path = '../assets/sprites/message.png'
+        self.base_line_path = '../assets/sprites/base.png'
         self.pipe_path_list = [
-            'assets/sprites/pipe-green.png',
-            'assets/sprites/pipe-red.png']
+            '../assets/sprites/pipe-green.png',
+            '../assets/sprites/pipe-red.png']
 
         # start the main game
         self.init_game()
@@ -64,22 +64,22 @@ class Flappy():
 
         # load the score numbers picture
         self.score_numbers_list = [
-            pygame.image.load('assets/sprites/0.png').convert_alpha(),
-            pygame.image.load('assets/sprites/1.png').convert_alpha(),
-            pygame.image.load('assets/sprites/2.png').convert_alpha(),
-            pygame.image.load('assets/sprites/3.png').convert_alpha(),
-            pygame.image.load('assets/sprites/4.png').convert_alpha(),
-            pygame.image.load('assets/sprites/5.png').convert_alpha(),
-            pygame.image.load('assets/sprites/6.png').convert_alpha(),
-            pygame.image.load('assets/sprites/7.png').convert_alpha(),
-            pygame.image.load('assets/sprites/8.png').convert_alpha(),
-            pygame.image.load('assets/sprites/9.png').convert_alpha()]
+            pygame.image.load('../assets/sprites/0.png').convert_alpha(),
+            pygame.image.load('../assets/sprites/1.png').convert_alpha(),
+            pygame.image.load('../assets/sprites/2.png').convert_alpha(),
+            pygame.image.load('../assets/sprites/3.png').convert_alpha(),
+            pygame.image.load('../assets/sprites/4.png').convert_alpha(),
+            pygame.image.load('../assets/sprites/5.png').convert_alpha(),
+            pygame.image.load('../assets/sprites/6.png').convert_alpha(),
+            pygame.image.load('../assets/sprites/7.png').convert_alpha(),
+            pygame.image.load('../assets/sprites/8.png').convert_alpha(),
+            pygame.image.load('../assets/sprites/9.png').convert_alpha()]
 
         # load the game over picture
-        self.gameover_label = pygame.image.load('assets/sprites/gameover.png').convert_alpha()
+        self.gameover_label = pygame.image.load('../assets/sprites/gameover.png').convert_alpha()
 
         # load the base line picture
-        self.base_line = pygame.image.load('assets/sprites/base.png').convert_alpha()
+        self.base_line = pygame.image.load('../assets/sprites/base.png').convert_alpha()
 
         # load the message picture
         self.message = pygame.image.load(self.message_path).convert_alpha()
@@ -95,10 +95,10 @@ class Flappy():
         else:
             file_extension = '.ogg'
 
-        self.sound_die    = pygame.mixer.Sound('assets/audio/die' + file_extension)
-        self.sound_hit   = pygame.mixer.Sound('assets/audio/hit' + file_extension)
-        self.sound_point  = pygame.mixer.Sound('assets/audio/point' + file_extension)
-        self.sound_wing   = pygame.mixer.Sound('assets/audio/wing' + file_extension)
+        self.sound_die    = pygame.mixer.Sound('../assets/audio/die' + file_extension)
+        self.sound_hit   = pygame.mixer.Sound('../assets/audio/hit' + file_extension)
+        self.sound_point  = pygame.mixer.Sound('../assets/audio/point' + file_extension)
+        self.sound_wing   = pygame.mixer.Sound('../assets/audio/wing' + file_extension)
 
         while True:
             # load random background
@@ -282,7 +282,7 @@ class Flappy():
             self.screen.blit(self.base_line,(self.base_line_x,self.base_line_y))
             # draw score
             self.show_score()
-
+            
             pygame.display.update()
             self.fps_clock.tick(self.fps)
 
@@ -392,87 +392,6 @@ class Flappy():
             self.all_pipes_sprites.empty()
 
         return False
-    
-    def train_step(self,action):
-        bird_max_drop_y = params.bird_max_drop_y
-        bird_drop_y = params.bird_drop_y
-        bird_flap_acc_y = params.bird_flap_acc_y
-        bird_drop_h_angle = params.bird_drop_h_angle
-        bird_flap_h_angle = params.bird_flap_h_angle
-        bird_min_h_angle = params.bird_min_h_angle
-
-        pygame.event.pump()
-        if len(action) != 1:
-            raise ValueError("No action or multiple actions given")
-        
-        reward = 0
-        terminated = False
-
-        if action[0] == 1:
-            # if action is flap
-            if (self.bird_y + self.bird[0].get_height() / 2) > 0:
-                self.sound_wing.play()
-                self.bird_flapping = True
-                self.bird_vel_y = bird_flap_acc_y
-
-            # count score
-            self.bird_mid_x = self.bird_x + self.bird[0].get_width() / 2
-            for upper_pipe in self.upper_pipes:
-                upper_pipe_mid_x = upper_pipe[0] + self.pipe[0].get_width() / 2
-                if upper_pipe_mid_x <= self.bird_mid_x < upper_pipe_mid_x + (- params.pipe_x_vel):
-                    self.sound_point.play()
-                    self.score += 1
-                    reward += 1
-
-            # move baseline
-            self.base_line_x = -((-self.base_line_x + 100) % self.base_shift)
-
-            # iterate bird index
-            self.bird_index = (self.bird_index+1) % 4
-
-            # draw the images
-            self.screen.blit(self.background,(0,0))
-            self.bird_surface = pygame.transform.rotate(self.bird[self.bird_index_seq[self.bird_index]],self.bird_h_angle)
-            self.screen.blit(self.bird_surface,(self.bird_x,self.bird_y))
-            
-            # move the pipes to the left and draw them
-            for upper_pipe, lower_pipe in zip(self.upper_pipes,self.lower_pipes):
-                upper_pipe[0] += params.pipe_x_vel
-                lower_pipe[0] += params.pipe_x_vel 
-
-            for upper_pipe, lower_pipe in zip(self.upper_pipes,self.lower_pipes):         
-                self.screen.blit(self.pipe[0], (upper_pipe[0], upper_pipe[1]))
-                self.screen.blit(self.pipe[1], (lower_pipe[0], lower_pipe[1]))
-            
-            # if leftmost pipe is touching the left border, or there are enough space to draw the next set of pipes
-            # generate a new set of pipes
-            if 0 < self.upper_pipes[0][0] < -(params.pipe_x_vel-1) or self.upper_pipes[-1][0] <= self.screen_width: 
-                new_pipe = self.generate_random_pipes(self.upper_pipes[-1][0])
-                self.upper_pipes.append(new_pipe[0])
-                self.lower_pipes.append(new_pipe[1])
-            
-            # if pipes are touching the left border, remove them from pipes list
-            if self.upper_pipes[0][0] < -self.pipe[0].get_width():
-                self.upper_pipes.pop(0)
-                self.lower_pipes.pop(0)
-
-            if self.bird_crashed():
-                terminated = True
-                reward = -1
-
-            # copy the pixels into 3d observation array
-            observation = pygame.surfarray.array3d(pygame.display.get_surface())
-
-            # draw base line 
-            self.screen.blit(self.base_line,(self.base_line_x,self.base_line_y))
-            # draw score
-            self.show_score()
-
-            pygame.display.update()
-            self.fps_clock.tick(self.fps)
-
-            return observation, reward, terminated
-            
         
 if __name__ == "__main__":
     f = Flappy()
