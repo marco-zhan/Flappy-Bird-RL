@@ -12,6 +12,9 @@ class Play_Mode(Enum):
     TRAIN = 3
     TRAIN_NOUI = 4
 
+from brain import Brain 
+brain = Brain()
+
 SCREEN_WIDTH = 288
 SCREEN_HEIGHT = 512
 PIPE_V_GAP = 100
@@ -22,6 +25,8 @@ BASE_Y = 0.8 * SCREEN_HEIGHT
 MODE = Play_Mode.NORMAL
 
 IMAGE, SOUND = {}, {}
+
+SCORES = []
 
 BIRD_PATH_LIST = [
     # Red birds
@@ -53,6 +58,7 @@ PIPE_PATH_LIST = [
     '../assets/sprites/pipe-green.png',
     '../assets/sprites/pipe-red.png']
 
+
 # Image sprite class
 class Image_Sprite(pygame.sprite.Sprite):
     def __init__(self,width,height):
@@ -63,7 +69,7 @@ class Image_Sprite(pygame.sprite.Sprite):
 def main():
     global SCREEN, FPSCLOCK, FPS, bot, MODE, SCORES, EPISODE, MAX_SCORE, RESUME_ONCRASH
     parser = argparse.ArgumentParser("flappy.py")
-    parser.add_argument("--fps", type=int, default=30, help="number of frames per second, default in normal mode: 25, training or AI mode: 60")
+    parser.add_argument("--fps", type=int, default=60, help="number of frames per second, default in normal mode: 25, training or AI mode: 60")
     parser.add_argument("--episode", type=int, default=10000, help="episode number, default: 10000")
     parser.add_argument("--ai", action="store_true", help="use AI agent to play game")
     parser.add_argument("--train", action="store", choices=('normal', 'noui', 'replay'), help="train AI agent to play game, replay game from last 50 steps in 'replay' mode")
@@ -89,7 +95,7 @@ def main():
         MODE = Play_Mode.TRAIN
     else:
         MODE = Play_Mode.NORMAL
-        FPS = 25
+        FPS = 30
 
     pygame.init()
     FPSCLOCK = pygame.time.Clock()
@@ -181,7 +187,11 @@ def show_welcome_screen():
                 # return out if space or up are pressed
                 SOUND["wing"].play()
                 return [bird_y+osc_value[0], base_x, bird_index]
-            
+        
+        if MODE != Play_Mode.NORMAL:
+            SOUND["wing"].play()
+            return [bird_y+osc_value[0], base_x, bird_index]
+
         # loop through bird index
         bird_index = (bird_index+1) % 4
 
@@ -214,7 +224,7 @@ def main_game(movement_info):
     bird_x = SCREEN_WIDTH * 0.2
     base_shift = IMAGE['base'].get_width() - IMAGE['background'].get_width()
 
-    new_pipe_1 = generate_random_pipes(SCREEN_WIDTH)
+    new_pipe_1 = generate_random_pipes(SCREEN_WIDTH/2)
     new_pipe_2 = generate_random_pipes(new_pipe_1[0][0])
 
     # divide them into upper and lower pipes
@@ -239,25 +249,36 @@ def main_game(movement_info):
     bird_h_angle = 20
 
     while True:
-        for event in pygame.event.get():
-            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
-                pygame.quit()
-                sys.exit()
-            if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
-                if bird_y > -2 * IMAGE["bird"][0].get_height():
-                    SOUND["wing"].play()
-                    bird_flapping = True
-                    bird_vel_y = bird_flap_acc_y
-                    
+        if MODE == Play_Mode.NORMAL:
+            for event in pygame.event.get():
+                if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                    pygame.quit()
+                    sys.exit()
+                if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+                    if bird_y > -2 * IMAGE["bird"][0].get_height():
+                        SOUND["wing"].play()
+                        bird_flapping = True
+                        bird_vel_y = bird_flap_acc_y
+        
+        elif MODE == Play_Mode.TRAIN and brain.act(bird_x, bird_y, bird_vel_y, lower_pipes):
+            pygame.event.pump()
+            if bird_y > -2 * IMAGE["bird"][0].get_height():
+                SOUND["wing"].play()
+                bird_flapping = True
+                bird_vel_y = bird_flap_acc_y
+               
         # check if the bird is crashed return crash_info if true
         if bird_crashed(bird_x,bird_y,upper_pipes,lower_pipes):
+            if MODE == Play_Mode.TRAIN:
+                brain.update_score(score)
+
             return [bird_x,bird_y,bird_vel_y,bird_h_angle,upper_pipes,lower_pipes,base_x,score]
         
         # count score
         bird_mid_x = bird_x + IMAGE["bird"][0].get_width() / 2
         for upper_pipe in upper_pipes:
             upper_pipe_mid_x = upper_pipe[0] + IMAGE["pipe"][0].get_width() / 2
-            if upper_pipe_mid_x <= bird_mid_x < upper_pipe_mid_x + (PIPE_VEL):
+            if upper_pipe_mid_x <= bird_mid_x < upper_pipe_mid_x + (-PIPE_VEL):
                 SOUND['point'].play()
                 score += 1
 
@@ -316,6 +337,8 @@ def main_game(movement_info):
 
 def show_gameover_screen(position_info):
     bird_x,bird_y,bird_vel_y,bird_h_angle,upper_pipes,lower_pipes,base_x,score = position_info
+    update_Q_table(score)
+    
     bird_drop_y = 1 # bird downward accelration in pixels
     bird_flap_acc_y = -9 # bird flap acceleration in pixels
     bird_max_drop_y = 10 # bird maximum downward acceleration
@@ -335,6 +358,10 @@ def show_gameover_screen(position_info):
             if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
                 if bird_y + bird_height > BASE_Y - 1: # this is to check bird is on the ground
                     return
+        
+        if MODE == Play_Mode.TRAIN:
+            pygame.event.pump()
+            return
 
         # bird movement
         if bird_y + bird_height < BASE_Y- 1:
@@ -363,6 +390,19 @@ def show_gameover_screen(position_info):
 
         FPSCLOCK.tick(FPS)
         pygame.display.update()
+
+def update_Q_table(score):
+    print("Game " + str(brain.cycle_count) + ": " + str(score))
+
+    if MODE == Play_Mode.TRAIN:
+        brain.dump_qvalues()
+
+    if score > max(SCORES, default=0):
+        print("\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        print("$$$$$$$$ NEW RECORD: %d $$$$$$$$" % score)
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
+
+    SCORES.append(score)
 
 def generate_random_pipes(prev_pipe_x):
     pipe_height = IMAGE['pipe'][0].get_height()
