@@ -220,7 +220,8 @@ class Flappy():
                         self.sound_wing.play()
                         self.bird_flapping = True
                         self.bird_vel_y = bird_flap_acc_y
-                        
+            
+            print(self.pipe[0].get_width())
             # check if the bird is crashed return crash_info if true
             if self.bird_crashed():
                 return 

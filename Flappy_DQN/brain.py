@@ -3,17 +3,19 @@ import random
 
 class Brain():
     def __init__(self):
-        self.learning_rate = 0.7
-        self.GAMMA = 1.0
-        self.reward = {"alive": 0,"die": -1000}
-        self.load_qvalues()
-        self.replay_memory = []
-        self.last_state = "0_0_0_0"
-        self.init_state(self.last_state)
-        self.cycle_count = 0
-        self.last_action = 0
+        self.learning_rate = 0.7 # learning rate of the brain
+        self.GAMMA = 1.0 # discount of the brain
+        self.reward = {"alive": 0,"die": -1000} # rewards for stay alive and die
+        self.load_qvalues() # load Q_values from json file
+        self.replay_memory = [] # replay memory of the brain
+        self.last_state = "0_0_0_0" # initilize state 
+        self.init_state(self.last_state) 
+        self.cycle_count = 0 # game cycle count
+        self.last_action = 0 # last action bird performed
 
     def load_qvalues(self):
+        """ load Q values from json file
+        """
         self.qvalues = {}
         try:
             fp = open("data/qvalues.json")
@@ -23,31 +25,52 @@ class Brain():
         fp.close()
         
     def get_state(self,x,y,vel,pipe):
-        pipe0 = pipe[0]
-        pipe1 = pipe[1]
+        """ Calculate state of the game from given game settings
+        
+        Arguments:
+            x {float} -- bird x coordinate
+            y {float} -- bird y coordinate
+            vel {float} -- velocity of the bird 
+            lower_pipes {[pipe]} -- lower pipes in the game
+        
+        Returns:
+            [string] -- "A_B_C_D"
+            where:
+            A -- diff(x,leftmost lower pipe x)
+            B -- diff(y,leftmost lower pipe y)
+            C -- velocity of the bird
+            D -- diff(y, second lower pipe from the left's y)
+        """
+
+        pipe0 = pipe[0] # leftmost lower pipes
+        pipe1 = pipe[1] # second lower pipes from the left
+
+        # move the brain view to the next pipe if entering over 50px 
         if x - pipe[0][0] >= 50:
             pipe0 = pipe[1]
             if len(pipe) > 2:
                 pipe1 = pipe[2]
 
-        x0 = pipe0[0] - x
-        y0 = pipe0[1] - y
-        if -50 < x0 <= 0:  
+
+        diff_x = pipe0[0] - x
+        diff_y = pipe0[1] - y
+
+        if -50 < diff_x <= 0:  
             y1 = pipe1[1] - y
         else:
             y1 = 0
 
-        if x0 < -40:
-            x0 = int(x0)
-        elif x0 < 140:
-            x0 = int(x0) - (int(x0) % 10)
+        if diff_x < -40:
+            diff_x = int(diff_x)
+        elif diff_x < 140:
+            diff_x = int(diff_x) - (int(diff_x) % 10)
         else:
-            x0 = int(x0) - (int(x0) % 70)
+            diff_x = int(diff_x) - (int(diff_x) % 70)
 
-        if -180 < y0 < 180:
-            y0 = int(y0) - (int(y0) % 10)
+        if -180 < diff_y < 180:
+            diff_y = int(diff_y) - (int(diff_y) % 10)
         else:
-            y0 = int(y0) - (int(y0) % 60)
+            diff_y = int(diff_y) - (int(diff_y) % 60)
 
         #x1 = int(x1) - (int(x1) % 10)
         if -180 < y1 < 180:
@@ -55,7 +78,7 @@ class Brain():
         else:
             y1 = int(y1) - (int(y1) % 60)
 
-        state = str(int(x0)) + "_" + str(int(y0)) + "_" + str(int(vel)) + "_" + str(int(y1))
+        state = str(int(diff_x)) + "_" + str(int(diff_y)) + "_" + str(int(vel)) + "_" + str(int(y1))
         self.init_state(state)
         return state
     
@@ -69,17 +92,17 @@ class Brain():
                 print("======== New state: {0:14s}, Total: {1} ========".format(state, num))
 
 
-    def act(self,x,y,vel,lower_pipes):
-        """ Choose the best action based on the current state
+    def act(self,x,y,vel,lower_pipes): 
+        """ act based on the information passed from game
         
         Arguments:
-            x {[type]} -- [description]
-            y {[type]} -- [description]
-            vel {[type]} -- [description]
-            pipe {[type]} -- [description]
+            x {float} -- bird x coordinate
+            y {float} -- bird y coordinate
+            vel {float} -- velocity of the bird 
+            lower_pipes {[pipe]} -- lower pipes in the game
         
         Returns:
-            [Bool] -- [Which action to do, "flap" if True, "do nothing" if false]
+            [int] -- 1 if flap, 0 if do nothing
         """
         state = self.get_state(x,y,vel,lower_pipes)
         self.replay_memory.append([self.last_state,self.last_action,state])

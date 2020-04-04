@@ -26,10 +26,9 @@ PIPE_VEL = -4
 BASE_Y = 0.8 * SCREEN_HEIGHT
 MODE = Mode.HUMAN
 
-IMAGE, SOUND = {}, {}
+IMAGE, SOUND = {}, {} # images and sound dictionary
 
-# past score list
-SCORES = []
+SCORES = [] # past score list
 
 BIRD_PATH_LIST = [
     # Red birds
@@ -389,7 +388,7 @@ def show_gameover_screen(position_info):
         pygame.display.update()
 
 def update_Q_table(score):
-    print("Game " + str(brain.cycle_count) + ": " + str(score))
+    print("Game " + str(brain.cycle_count) + ": " + "Score: " + str(score))
 
     if MODE == Mode.TRAIN:
         brain.dump_qvalues()
