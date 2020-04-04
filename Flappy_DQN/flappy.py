@@ -5,16 +5,18 @@ import pygame
 import sys
 from pygame.locals import *
 
+# define game modes 
 from enum import Enum
-class Play_Mode(Enum):
-    NORMAL = 1
-    PLAYER_AI = 2
+class Mode(Enum):
+    HUMAN = 1
+    AI = 2
     TRAIN = 3
-    TRAIN_NOUI = 4
 
+# import DQN brain
 from brain import Brain 
 brain = Brain()
 
+# settings
 SCREEN_WIDTH = 288
 SCREEN_HEIGHT = 512
 PIPE_V_GAP = 100
@@ -22,10 +24,11 @@ PIPE_H_GAP = 200
 PIPE_VEL = -4
 
 BASE_Y = 0.8 * SCREEN_HEIGHT
-MODE = Play_Mode.NORMAL
+MODE = Mode.HUMAN
 
 IMAGE, SOUND = {}, {}
 
+# past score list
 SCORES = []
 
 BIRD_PATH_LIST = [
@@ -70,32 +73,20 @@ def main():
     global SCREEN, FPSCLOCK, FPS, bot, MODE, SCORES, EPISODE, MAX_SCORE, RESUME_ONCRASH
     parser = argparse.ArgumentParser("flappy.py")
     parser.add_argument("--fps", type=int, default=60, help="number of frames per second, default in normal mode: 25, training or AI mode: 60")
-    parser.add_argument("--episode", type=int, default=10000, help="episode number, default: 10000")
-    parser.add_argument("--ai", action="store_true", help="use AI agent to play game")
-    parser.add_argument("--train", action="store", choices=('normal', 'noui', 'replay'), help="train AI agent to play game, replay game from last 50 steps in 'replay' mode")
-    parser.add_argument("--resume", action="store_true", help="Resume game from last 50 steps before crash")
-    parser.add_argument("--max", type=int, default=10_000_000, help="maxium score per episode, restart game if agent reach this score, default: 10M")
-    parser.add_argument("--dump_hitmasks", action="store_true", help="dump hitmasks to file and exit")
+    parser.add_argument("--mode", action="store", choices=('human','ai','train'), default='train',help="choose the game mode")
+
     args = parser.parse_args()
 
     FPS = args.fps 
-    EPISODE = args.episode 
-    MAX_SCORE = args.max 
-    RESUME_ONCRASH = args.resume
 
-    if args.ai:
-        MODE = Play_Mode.PLAYER_AI
-    elif args.train == "noui":
-        MODE = Play_Mode.TRAIN_NOUI
-    elif args.train == "replay":
-        MODE = Play_Mode.TRAIN_REPLAY
-        RESUME_ONCRASH = True
-        FPS = 20
-    elif args.train == "normal":
-        MODE = Play_Mode.TRAIN
-    else:
-        MODE = Play_Mode.NORMAL
-        FPS = 30
+    if args.mode == "human":
+        MODE = Mode.HUMAN
+
+    elif args.mode == "ai":
+        MODE = Mode.AI
+
+    elif args.mode == "train":
+        MODE = MODE.TRAIN
 
     pygame.init()
     FPSCLOCK = pygame.time.Clock()
@@ -158,6 +149,7 @@ def main():
         show_gameover_screen(position_info)
 
 def show_welcome_screen():
+    # coordinates infos
     BIRD_WIDTH = IMAGE["bird"][0].get_width()
     BIRD_HEIGHT = IMAGE["bird"][0].get_height()
 
@@ -178,6 +170,12 @@ def show_welcome_screen():
 
     osc_value = [0,'i'] # oscalliation y value and direction (inrease or decrease)
 
+    # skip out welcome screen if playing in ai or train mode 
+    if MODE != Mode.HUMAN:
+        pygame.event.pump() # pump the game to avoid "no response issue"
+        SOUND["wing"].play()
+        return [bird_y+osc_value[0], base_x, bird_index]
+
     while True:
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
@@ -188,10 +186,6 @@ def show_welcome_screen():
                 SOUND["wing"].play()
                 return [bird_y+osc_value[0], base_x, bird_index]
         
-        if MODE != Play_Mode.NORMAL:
-            SOUND["wing"].play()
-            return [bird_y+osc_value[0], base_x, bird_index]
-
         # loop through bird index
         bird_index = (bird_index+1) % 4
 
@@ -249,7 +243,8 @@ def main_game(movement_info):
     bird_h_angle = 20
 
     while True:
-        if MODE == Play_Mode.NORMAL:
+        # if playing in human mode, check keyboard inputs
+        if MODE == Mode.HUMAN:
             for event in pygame.event.get():
                 if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                     pygame.quit()
@@ -260,16 +255,21 @@ def main_game(movement_info):
                         bird_flapping = True
                         bird_vel_y = bird_flap_acc_y
         
-        elif MODE == Play_Mode.TRAIN and brain.act(bird_x, bird_y, bird_vel_y, lower_pipes):
+        # if playing in AI mode or Train mode, get action from brain
+        elif MODE == Mode.TRAIN and brain.act(bird_x, bird_y, bird_vel_y, lower_pipes):
             pygame.event.pump()
             if bird_y > -2 * IMAGE["bird"][0].get_height():
                 SOUND["wing"].play()
                 bird_flapping = True
                 bird_vel_y = bird_flap_acc_y
-               
+
+        # pump the game to avoid "no response" issue
+        else: pygame.event.pump()
+
         # check if the bird is crashed return crash_info if true
         if bird_crashed(bird_x,bird_y,upper_pipes,lower_pipes):
-            if MODE == Play_Mode.TRAIN:
+            # update score if in training mode
+            if MODE == Mode.TRAIN:
                 brain.update_score(score)
 
             return [bird_x,bird_y,bird_vel_y,bird_h_angle,upper_pipes,lower_pipes,base_x,score]
@@ -337,8 +337,10 @@ def main_game(movement_info):
 
 def show_gameover_screen(position_info):
     bird_x,bird_y,bird_vel_y,bird_h_angle,upper_pipes,lower_pipes,base_x,score = position_info
-    update_Q_table(score)
-    
+    if MODE == Mode.TRAIN:
+        update_Q_table(score)
+        pygame.event.pump()
+        return
     bird_drop_y = 1 # bird downward accelration in pixels
     bird_flap_acc_y = -9 # bird flap acceleration in pixels
     bird_max_drop_y = 10 # bird maximum downward acceleration
@@ -358,11 +360,6 @@ def show_gameover_screen(position_info):
             if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
                 if bird_y + bird_height > BASE_Y - 1: # this is to check bird is on the ground
                     return
-        
-        if MODE == Play_Mode.TRAIN:
-            pygame.event.pump()
-            return
-
         # bird movement
         if bird_y + bird_height < BASE_Y- 1:
             bird_y += bird_vel_y
@@ -394,7 +391,7 @@ def show_gameover_screen(position_info):
 def update_Q_table(score):
     print("Game " + str(brain.cycle_count) + ": " + str(score))
 
-    if MODE == Play_Mode.TRAIN:
+    if MODE == Mode.TRAIN:
         brain.dump_qvalues()
 
     if score > max(SCORES, default=0):
@@ -458,66 +455,6 @@ def show_score(score):
     for digit in score_digits:
         SCREEN.blit(IMAGE["number"][digit], (score_offset_x, SCREEN_HEIGHT * 0.1))
         score_offset_x += IMAGE["number"][digit].get_width()
-        
-
-
-
-# # Flappy bird game class
-# class Flappy():
-#     def __init__(self):
-#         # load settings from param file
-#         self.pipe_vgap = params.pipe_vgap
-#         self.pipe_hgap = params.pipe_hgap
-#         self.fps = params.fps
-#         self.screen_width = params.screen_width
-#         self.screen_height = params.screen_height
-#         self.base_line_y = 0.8*self.screen_height # ground y
-
-#         self.message_path = '../assets/sprites/message.png'
-#         self.base_line_path = '../assets/sprites/base.png'
-    
-#     def main_game(self):
-#         # record score
-#         self.score = 0
-
-#         # pipe horizontal gap size 
-#         pipe_h_gap = params.pipe_hgap
-
-
-#         
-
-#             
-#             # draw the images
-#             self.screen.blit(self.background,(0,0))
-#             self.bird_surface = pygame.transform.rotate(self.bird[self.bird_index_seq[self.bird_index]],self.bird_h_angle)
-#             self.screen.blit(self.bird_surface,(self.bird_x,self.bird_y))
-            
-#             
-#             # draw base line 
-#             self.screen.blit(self.base_line,(self.base_line_x,self.base_line_y))
-#             # draw score
-#             self.show_score()
-            
-#             pygame.display.update()
-#             self.fps_clock.tick(self.fps)
-
-#     
-#             
-    
-#     # show score on screen, combine multiple digit images if score is multidigits 
-#     
-
-#     # generate random (x,y) coordinates for the upper and lower pipes
-#     def generate_random_pipes(self,prev_pipe_x):
-#         pip_hgap = params.pipe_hgap
-#         pipe_image_height = self.pipe[0].get_height()
-#         upper_pipe_y = random.randint(0,int(0.7*self.base_line_y-self.pipe_vgap))
-
-#         upper_pipe_y += self.base_line_y*0.2
-#         return [[prev_pipe_x + pip_hgap,upper_pipe_y-pipe_image_height],[prev_pipe_x + pip_hgap,upper_pipe_y+params.pipe_vgap]]
-    
-#     # check if bird is crashed, given all pipes
-#     
         
 if __name__ == "__main__":
     main()
