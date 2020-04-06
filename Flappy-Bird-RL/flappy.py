@@ -78,9 +78,9 @@ def main():
     global SCREEN, FPSCLOCK, FPS, bot, MODE, SCORES, EPISODE, MAX_SCORE
     parser = argparse.ArgumentParser("flappy.py")
     parser.add_argument("--fps", type=int, default=60, help="number of frames per second, default 60")
-    parser.add_argument("--mode", action="store", choices=('human','ai','train','noui'), default='human',help="choose the game mode")
+    parser.add_argument("--mode", action="store", choices=('human','ai','train','train_noui'), default='human',help="choose the game mode")
     parser.add_argument("--episode", type=int, default=1000, help="episode number, default: 1000")
-    parser.add_argument("--max", type=int, default=100000, help="max score to train, default: 100000")
+    parser.add_argument("--max", type=int, default=1000, help="max score to train, default: 1000")
 
     args = parser.parse_args()
 
@@ -98,7 +98,7 @@ def main():
     elif args.mode == "train":
         MODE = Mode.TRAIN
     
-    elif args.mode == "noui":
+    elif args.mode == "train_noui":
         MODE = Mode.TRAIN_NOUI
 
     pygame.init()
@@ -285,22 +285,6 @@ def main_game(movement_info):
         # pump the game to avoid "no response" issue
         else: pygame.event.pump()
         
-        # screen = pygame.transform.chop(SCREEN, (288, BASE_Y, 0, SCREEN_HEIGHT-BASE_Y))
-        # screen = pygame.transform.chop(screen, (288, 0, 0, SCREEN_HEIGHT*0.1 + IMAGE['number'][0].get_height()))
-
-        # base_dir = r'D:\UNSW Year 3\tensorflow\Some-Easy-Training-Problem\FlappyBird\Flappy_CNN\data'
-        # if bird_flapping:
-        #     which_dir = random_pick(['train','validation'],[0.7,0.3])
-        #     flap_dir = os.path.join(base_dir,which_dir,"flap")
-        #     pygame.image.save(screen,os.path.join(flap_dir,str(len(os.listdir(flap_dir)) + 1) + ".jpg"))
-            
-        # else:
-        #     which_dir = random_pick(['train','validation'],[0.7,0.3])
-        #     no_dir = os.path.join(base_dir,which_dir,"no")
-        #     flap_dir = os.path.join(base_dir,which_dir,"flap")
-        #     if len(os.listdir(flap_dir)) > len(os.listdir(no_dir)):
-        #         pygame.image.save(screen,os.path.join(no_dir,str(len(os.listdir(no_dir)) + 1) + ".jpg"))
-
         # check if the bird is crashed return crash_info if true
         if bird_crashed(bird_x,bird_y,upper_pipes,lower_pipes):
             # update score if in training mode
@@ -434,14 +418,6 @@ def show_gameover_screen(position_info):
 
         FPSCLOCK.tick(FPS)
         pygame.display.update()
-
-def random_pick(actions,probs):
-    random_normalized_num = random.random()  # random() -> x in the interval [0, 1).
-    accumulated_probability = 0.0
-    for item in zip(actions, probs):
-        accumulated_probability += item[1]
-        if random_normalized_num < accumulated_probability:
-            return item[0]
 
 def update_Q_table(score):
     print("Game " + str(brain.cycle_count) + ": " + "Score: " + str(score))

@@ -294,6 +294,8 @@ class Flappy():
         bird_min_h_angle = params.bird_min_h_angle
 
         bird_height = self.bird[0].get_height()
+        gameover_x = int((self.screen_width - self.gameover_label.get_width()) / 2)
+        gameover_y = int(self.screen_height * 0.4)
         
         while True:
             for event in pygame.event.get():
@@ -325,8 +327,9 @@ class Flappy():
             self.show_score()
 
             self.bird_surface = pygame.transform.rotate(self.bird[1], self.bird_h_angle)
-
+        
             self.screen.blit(self.bird_surface, (self.bird_x,self.bird_y))
+            self.screen.blit(self.gameover_label, (gameover_x, gameover_y))
 
             self.fps_clock.tick(self.fps)
             pygame.display.update()

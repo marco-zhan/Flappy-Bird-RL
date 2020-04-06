@@ -34,12 +34,12 @@ class Brain():
             lower_pipes {[pipe]} -- lower pipes in the game
         
         Returns:
-            [string] -- "A_B_C_D"
+            [string] -- "diffx_diffy_vel_y1"
             where:
-            A -- diff(x,leftmost lower pipe x)
-            B -- diff(y,leftmost lower pipe y)
-            C -- velocity of the bird
-            D -- diff(y, second lower pipe from the left's y)
+            diffx -- diff(x,leftmost lower pipe x)
+            diffy -- diff(y,leftmost lower pipe y)
+            vel -- velocity of the bird
+            y1 -- diff(y, second lower pipe from the left's y)
         """
 
         pipe0 = pipe[0] # leftmost lower pipes
@@ -89,7 +89,6 @@ class Brain():
             if num > 30000:
                 print("======== New state: {0:14s}, Total: {1} ========".format(state, num))
 
-
     def act(self,x,y,vel,lower_pipes): 
         """ act based on the information passed from game
         
@@ -105,8 +104,6 @@ class Brain():
         state = self.get_state(x,y,vel,lower_pipes)
         self.replay_memory.append((self.last_state,self.last_action,state))
 
-        self.save_qvalue()
-
         if self.qvalues[state][0] >= self.qvalues[state][1]: action = 0
         else: action = 1
 
@@ -114,16 +111,6 @@ class Brain():
         self.last_action = action
 
         return action
-    
-    def save_qvalue(self):
-        if len(self.replay_memory) > 6000000:
-            history = list(reversed(self.replay_memory[:5000000]))
-            for replay in history:
-                curr_state, action, next_state = replay
-                self.qvalues[curr_state][action] = (1-self.learning_rate) * self.qvalues[curr_state][action] + \
-                                       self.learning_rate * (self.reward['alive'] + self.GAMMA*max(self.qvalues[next_state][0:2]) )
-                self.qvalues[curr_state][action] = round(self.qvalues[curr_state][action],5)
-            self.replay_memory = self.replay_memory[5_000_000:]
     
     def terminate_game(self):
         replay_history = list(reversed(self.replay_memory))
