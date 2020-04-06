@@ -23,7 +23,6 @@ class Flappy():
         self.screen_width = params.screen_width
         self.screen_height = params.screen_height
         self.base_line_y = 0.8*self.screen_height # ground y
-        self.base_dir = r'D:\UNSW Year 3\tensorflow\Some-Easy-Training-Problem\FlappyBird\Flappy_CNN\data'
 
         # assets paths
         self.background_path_list = ['../assets/sprites/background-day.png',
@@ -221,22 +220,7 @@ class Flappy():
                         self.sound_wing.play()
                         self.bird_flapping = True
                         self.bird_vel_y = bird_flap_acc_y
-
-            screen = pygame.transform.chop(self.screen, (288, self.base_line_y, 0, self.screen_height-self.base_line_y))
-            screen = pygame.transform.chop(screen, (288, 0, 0, self.screen_height*0.1 + self.score_numbers_list[0].get_height()))
-
-            if self.bird_flapping:
-                which_dir = self.random_pick(['train','validation'],[0.7,0.3])
-                flap_dir = os.path.join(self.base_dir,which_dir,"flap")
-                pygame.image.save(screen,os.path.join(flap_dir,str(len(os.listdir(flap_dir)) + 1) + ".jpg"))
-                
-            else:
-                which_dir = self.random_pick(['train','validation'],[0.7,0.3])
-                no_dir = os.path.join(self.base_dir,which_dir,"no")
-                flap_dir = os.path.join(self.base_dir,which_dir,"flap")
-                if len(os.listdir(flap_dir)) > len(os.listdir(no_dir)):
-                    pygame.image.save(screen,os.path.join(no_dir,str(len(os.listdir(no_dir)) + 1) + ".jpg"))
-
+            
             # check if the bird is crashed return crash_info if true
             if self.bird_crashed():
                 return 
@@ -408,14 +392,6 @@ class Flappy():
             self.all_pipes_sprites.empty()
 
         return False
-    
-    def random_pick(self,actions,probs):
-        random_normalized_num = random.random()  # random() -> x in the interval [0, 1).
-        accumulated_probability = 0.0
-        for item in zip(actions, probs):
-            accumulated_probability += item[1]
-            if random_normalized_num < accumulated_probability:
-                return item[0]
-
+        
 if __name__ == "__main__":
     f = Flappy()

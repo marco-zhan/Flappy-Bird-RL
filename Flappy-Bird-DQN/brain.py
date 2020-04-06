@@ -51,7 +51,6 @@ class Brain():
             if len(pipe) > 2:
                 pipe1 = pipe[2]
 
-
         diff_x = pipe0[0] - x
         diff_y = pipe0[1] - y
 
@@ -60,7 +59,7 @@ class Brain():
         else:
             y1 = 0
 
-        if diff_x < -40:
+        if diff_x < -40: 
             diff_x = int(diff_x)
         elif diff_x < 140:
             diff_x = int(diff_x) - (int(diff_x) % 10)
@@ -72,7 +71,6 @@ class Brain():
         else:
             diff_y = int(diff_y) - (int(diff_y) % 60)
 
-        #x1 = int(x1) - (int(x1) % 10)
         if -180 < y1 < 180:
             y1 = int(y1) - (int(y1) % 10)
         else:
@@ -105,7 +103,7 @@ class Brain():
             [int] -- 1 if flap, 0 if do nothing
         """
         state = self.get_state(x,y,vel,lower_pipes)
-        self.replay_memory.append([self.last_state,self.last_action,state])
+        self.replay_memory.append((self.last_state,self.last_action,state))
 
         self.save_qvalue()
 
@@ -124,11 +122,30 @@ class Brain():
                 curr_state, action, next_state = replay
                 self.qvalues[curr_state][action] = (1-self.learning_rate) * self.qvalues[curr_state][action] + \
                                        self.learning_rate * (self.reward['alive'] + self.GAMMA*max(self.qvalues[next_state][0:2]) )
+                self.qvalues[curr_state][action] = round(self.qvalues[curr_state][action],5)
             self.replay_memory = self.replay_memory[5_000_000:]
     
+    def terminate_game(self):
+        replay_history = list(reversed(self.replay_memory))
+        for replay in replay_history:
+            curr_state, action, next_state = replay
+            self.qvalues[curr_state][action] = (1-self.learning_rate) * self.qvalues[curr_state][action] + self.learning_rate * (self.reward["alive"] + self.GAMMA*max(self.qvalues[next_state][0:2]))
+            self.qvalues[curr_state][action] = round(self.qvalues[curr_state][action],5)
+
+        self.last_state = "0_0_0_0" # initial position, MUST NOT be one of any other possible state
+        self.last_action = 0
+        self.moves = []
+        self.cycle_count += 1
+
     # this function only get called when the game terminates
     def update_score(self,score):
         replay_history = list(reversed(self.replay_memory))
+        
+        if int(replay_history[0][2].split("_")[1]) >= 120: upper_death = True
+        else: upper_death = False
+
+        if int(replay_history[0][2].split("_")[1]) <= -180 and int(replay_history[0][2].split("_")[0]) <= 20: lower_death = True
+        else: lower_death = False
 
         step = 0
         for replay in replay_history:
@@ -137,11 +154,19 @@ class Brain():
             self.qvalues[curr_state][2] += 1
             if step <= 2:
                 curr_reward = self.reward["die"]
+            elif upper_death and action:
+                curr_reward = self.reward["die"]
+                upper_death = False
+            elif lower_death:
+                curr_reward = self.reward["die"]
+                lower_death = False
             else:
                 curr_reward = self.reward["alive"]
             
-            self.qvalues[curr_state][action] = (1-self.learning_rate) * self.qvalues[curr_state][action] + \
-                                                self.learning_rate * (curr_reward + self.GAMMA*max(self.qvalues[next_state][0:2]))
+            self.qvalues[curr_state][action] = (1-self.learning_rate) * self.qvalues[curr_state][action] + self.learning_rate * (curr_reward + self.GAMMA*max(self.qvalues[next_state][0:2]))
+            self.qvalues[curr_state][action] = round(self.qvalues[curr_state][action],5)
+            
+
         self.replay_memory = []
         self.cycle_count += 1
 

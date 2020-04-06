@@ -4,12 +4,12 @@
 
 Implementation of one of the most famous arcade games -- Flappy Bird using Python and Pygame
 
-## Technologies
+## Dependencies
 - Python 3.7.4 
 - Pygame 1.9.6
 >**Note: You need to install pygame package for this program to run**
 
->**Tips: It can be installed using the command "pip install pygame"**
+>**Tips: Install using the command "pip install pygame"**
 
 ## How to launch
 >python flappy.py

@@ -1,4 +1,8 @@
 import random
+import time
+# set random seeds for generating random pipes
+seed = int(time.time())
+random.seed(seed)
 import os
 import argparse
 import pygame
@@ -11,6 +15,7 @@ class Mode(Enum):
     HUMAN = 1
     AI = 2
     TRAIN = 3
+    TRAIN_NOUI = 4
 
 # import DQN brain
 from brain import Brain 
@@ -62,6 +67,7 @@ PIPE_PATH_LIST = [
 
 
 # Image sprite class
+# This class is used to detect collision
 class Image_Sprite(pygame.sprite.Sprite):
     def __init__(self,width,height):
         pygame.sprite.Sprite.__init__(self)
@@ -69,28 +75,37 @@ class Image_Sprite(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
 def main():
-    global SCREEN, FPSCLOCK, FPS, bot, MODE, SCORES, EPISODE, MAX_SCORE, RESUME_ONCRASH
+    global SCREEN, FPSCLOCK, FPS, bot, MODE, SCORES, EPISODE, MAX_SCORE
     parser = argparse.ArgumentParser("flappy.py")
-    parser.add_argument("--fps", type=int, default=60, help="number of frames per second, default in normal mode: 25, training or AI mode: 60")
-    parser.add_argument("--mode", action="store", choices=('human','ai','train'), default='train',help="choose the game mode")
+    parser.add_argument("--fps", type=int, default=60, help="number of frames per second, default 60")
+    parser.add_argument("--mode", action="store", choices=('human','ai','train','noui'), default='human',help="choose the game mode")
+    parser.add_argument("--episode", type=int, default=1000, help="episode number, default: 1000")
+    parser.add_argument("--max", type=int, default=100000, help="max score to train, default: 100000")
 
     args = parser.parse_args()
 
-    FPS = args.fps 
+    FPS = args.fps
+    EPISODE = args.episode
+    MAX_SCORE = args.max
 
     if args.mode == "human":
         MODE = Mode.HUMAN
+        FPS = 30
 
     elif args.mode == "ai":
         MODE = Mode.AI
 
     elif args.mode == "train":
-        MODE = MODE.TRAIN
+        MODE = Mode.TRAIN
+    
+    elif args.mode == "noui":
+        MODE = Mode.TRAIN_NOUI
 
     pygame.init()
     FPSCLOCK = pygame.time.Clock()
     SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+    # load score numbers image
     IMAGE["number"] = [
             pygame.image.load('../assets/sprites/0.png').convert_alpha(),
             pygame.image.load('../assets/sprites/1.png').convert_alpha(),
@@ -103,15 +118,16 @@ def main():
             pygame.image.load('../assets/sprites/8.png').convert_alpha(),
             pygame.image.load('../assets/sprites/9.png').convert_alpha()]
 
-    # load the game over picture
+    # load the game over image
     IMAGE["gameover"] = pygame.image.load('../assets/sprites/gameover.png').convert_alpha()
 
-    # load the base line picture
+    # load the base line image
     IMAGE["base"]= pygame.image.load('../assets/sprites/base.png').convert_alpha()
 
-    # load the message picture
+    # load the message image
     IMAGE["message"] = pygame.image.load('../assets/sprites/message.png').convert_alpha()
 
+    # load sound tracks
     if 'win' in sys.platform:
         file_extension = '.wav'
     else:
@@ -147,6 +163,7 @@ def main():
         # # if crash_info returns, use the returned position to show gameover screen
         show_gameover_screen(position_info)
 
+# show welcome screen
 def show_welcome_screen():
     # coordinates infos
     BIRD_WIDTH = IMAGE["bird"][0].get_width()
@@ -169,7 +186,7 @@ def show_welcome_screen():
 
     osc_value = [0,'i'] # oscalliation y value and direction (inrease or decrease)
 
-    # skip out welcome screen if playing in ai or train mode 
+    # skip out welcome screen if playing in AI or train mode 
     if MODE != Mode.HUMAN:
         pygame.event.pump() # pump the game to avoid "no response issue"
         SOUND["wing"].play()
@@ -211,12 +228,15 @@ def show_welcome_screen():
         pygame.display.update()
         FPSCLOCK.tick(FPS)
 
+# operate the main game
 def main_game(movement_info):
     score = 0
     bird_y, base_x, bird_index = movement_info
     bird_x = SCREEN_WIDTH * 0.2
     base_shift = IMAGE['base'].get_width() - IMAGE['background'].get_width()
 
+    # generate random pipes, the argument passed in is the the previous pipe x
+    # the horizontal distance between pipes can be changed by altering PIPE_H_GAP global variable
     new_pipe_1 = generate_random_pipes(SCREEN_WIDTH/2)
     new_pipe_2 = generate_random_pipes(new_pipe_1[0][0])
 
@@ -255,7 +275,7 @@ def main_game(movement_info):
                         bird_vel_y = bird_flap_acc_y
         
         # if playing in AI mode or Train mode, get action from brain
-        elif MODE == Mode.TRAIN and brain.act(bird_x, bird_y, bird_vel_y, lower_pipes):
+        elif brain.act(bird_x, bird_y, bird_vel_y, lower_pipes):
             pygame.event.pump()
             if bird_y > -2 * IMAGE["bird"][0].get_height():
                 SOUND["wing"].play()
@@ -264,11 +284,27 @@ def main_game(movement_info):
 
         # pump the game to avoid "no response" issue
         else: pygame.event.pump()
+        
+        # screen = pygame.transform.chop(SCREEN, (288, BASE_Y, 0, SCREEN_HEIGHT-BASE_Y))
+        # screen = pygame.transform.chop(screen, (288, 0, 0, SCREEN_HEIGHT*0.1 + IMAGE['number'][0].get_height()))
+
+        # base_dir = r'D:\UNSW Year 3\tensorflow\Some-Easy-Training-Problem\FlappyBird\Flappy_CNN\data'
+        # if bird_flapping:
+        #     which_dir = random_pick(['train','validation'],[0.7,0.3])
+        #     flap_dir = os.path.join(base_dir,which_dir,"flap")
+        #     pygame.image.save(screen,os.path.join(flap_dir,str(len(os.listdir(flap_dir)) + 1) + ".jpg"))
+            
+        # else:
+        #     which_dir = random_pick(['train','validation'],[0.7,0.3])
+        #     no_dir = os.path.join(base_dir,which_dir,"no")
+        #     flap_dir = os.path.join(base_dir,which_dir,"flap")
+        #     if len(os.listdir(flap_dir)) > len(os.listdir(no_dir)):
+        #         pygame.image.save(screen,os.path.join(no_dir,str(len(os.listdir(no_dir)) + 1) + ".jpg"))
 
         # check if the bird is crashed return crash_info if true
         if bird_crashed(bird_x,bird_y,upper_pipes,lower_pipes):
             # update score if in training mode
-            if MODE == Mode.TRAIN:
+            if MODE == Mode.TRAIN or MODE == Mode.TRAIN_NOUI:
                 brain.update_score(score)
 
             return [bird_x,bird_y,bird_vel_y,bird_h_angle,upper_pipes,lower_pipes,base_x,score]
@@ -280,6 +316,11 @@ def main_game(movement_info):
             if upper_pipe_mid_x <= bird_mid_x < upper_pipe_mid_x + (-PIPE_VEL):
                 SOUND['point'].play()
                 score += 1
+
+                # terminate game if max score reached
+                if score >= MAX_SCORE:
+                    brain.terminate_game()
+                    return [bird_x,bird_y,bird_vel_y,bird_h_angle,upper_pipes,lower_pipes,base_x,score]
 
         # bird movement
         if bird_h_angle >= bird_min_h_angle:
@@ -318,25 +359,27 @@ def main_game(movement_info):
         bird_index = (bird_index+1) % 4
 
         # draw images
-        SCREEN.blit(IMAGE['background'], (0,0))
+        if MODE != Mode.TRAIN_NOUI:
+            SCREEN.blit(IMAGE['background'], (0,0))
 
-        for upper_pipe, lower_pipe in zip(upper_pipes, lower_pipes):
-            SCREEN.blit(IMAGE["pipe"][0], (upper_pipe[0], upper_pipe[1]))
-            SCREEN.blit(IMAGE["pipe"][1], (lower_pipe[0], lower_pipe[1]))
+            for upper_pipe, lower_pipe in zip(upper_pipes, lower_pipes):
+                SCREEN.blit(IMAGE["pipe"][0], (upper_pipe[0], upper_pipe[1]))
+                SCREEN.blit(IMAGE["pipe"][1], (lower_pipe[0], lower_pipe[1]))
 
-        SCREEN.blit(IMAGE["base"], (base_x, BASE_Y))
-        show_score(score)
+            SCREEN.blit(IMAGE["base"], (base_x, BASE_Y))
+            show_score(score)
 
-        bird_surface = pygame.transform.rotate(IMAGE["bird"][1], bird_h_angle)
+            bird_surface = pygame.transform.rotate(IMAGE["bird"][1], bird_h_angle)
 
-        SCREEN.blit(bird_surface, (bird_x,bird_y))
+            SCREEN.blit(bird_surface, (bird_x,bird_y))
 
-        pygame.display.update()
-        FPSCLOCK.tick(FPS)
+            pygame.display.update()
+            FPSCLOCK.tick(FPS)
 
+# show the game over screen
 def show_gameover_screen(position_info):
     bird_x,bird_y,bird_vel_y,bird_h_angle,upper_pipes,lower_pipes,base_x,score = position_info
-    if MODE == Mode.TRAIN:
+    if MODE != Mode.HUMAN:
         update_Q_table(score)
         pygame.event.pump()
         return
@@ -351,6 +394,10 @@ def show_gameover_screen(position_info):
     bird_height = IMAGE['bird'][0].get_height()
     
     on_ground = False
+
+    gameover_x = int((SCREEN_WIDTH - IMAGE["gameover"].get_width()) / 2)
+    gameover_y = int(SCREEN_HEIGHT * 0.4)
+
     while True:
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
@@ -381,21 +428,36 @@ def show_gameover_screen(position_info):
         show_score(score)
 
         bird_surface = pygame.transform.rotate(IMAGE["bird"][1], bird_h_angle)
+        SCREEN.blit(IMAGE["gameover"], (gameover_x, gameover_y))
 
         SCREEN.blit(bird_surface, (bird_x,bird_y))
 
         FPSCLOCK.tick(FPS)
         pygame.display.update()
 
+def random_pick(actions,probs):
+    random_normalized_num = random.random()  # random() -> x in the interval [0, 1).
+    accumulated_probability = 0.0
+    for item in zip(actions, probs):
+        accumulated_probability += item[1]
+        if random_normalized_num < accumulated_probability:
+            return item[0]
+
 def update_Q_table(score):
     print("Game " + str(brain.cycle_count) + ": " + "Score: " + str(score))
 
-    if MODE == Mode.TRAIN:
+    if MODE == Mode.TRAIN or MODE == Mode.TRAIN_NOUI:
         brain.dump_qvalues()
 
+    if brain.cycle_count >= EPISODE:
+        print("Training finished")
+        exit(1)
+    
     if score > max(SCORES, default=0):
         print("\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        print("\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         print("$$$$$$$$ NEW RECORD: %d $$$$$$$$" % score)
+        print("\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
 
     SCORES.append(score)
