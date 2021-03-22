@@ -6,11 +6,11 @@ Implementation of Flappy Bird using python and Pygame module. Then, using the re
 
 ## Dependencies
 - Python 3.7 
-- Pygame 1.9.6
+- Pygame 2.0.0
   
 >**Note: You need to install pygame package for this program to run**
 
->**Install using the command** `pip install pygame`
+>**Install using the command** `pip install pygame==2.0.0`
 
 ## What's included
 - `Flappy-Bird-RL/brain.py` This file contains the brain class that uses reinforcement learning to  play Flappy Bird

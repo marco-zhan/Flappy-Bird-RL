@@ -100,6 +100,7 @@ def main():
     
     elif args.mode == "train_noui":
         MODE = Mode.TRAIN_NOUI
+        FPS = 120
 
     pygame.init()
     FPSCLOCK = pygame.time.Clock()
@@ -189,7 +190,8 @@ def show_welcome_screen():
     # skip out welcome screen if playing in AI or train mode 
     if MODE != Mode.HUMAN:
         pygame.event.pump() # pump the game to avoid "no response issue"
-        SOUND["wing"].play()
+        if MODE != Mode.TRAIN_NOUI:
+            SOUND["wing"].play()
         return [bird_y+osc_value[0], base_x, bird_index]
 
     while True:
@@ -199,7 +201,8 @@ def show_welcome_screen():
                 sys.exit()
             if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
                 # return out if space or up are pressed
-                SOUND["wing"].play()
+                if MODE != Mode.TRAIN_NOUI:
+                    SOUND["wing"].play()
                 return [bird_y+osc_value[0], base_x, bird_index]
         
         # loop through bird index
@@ -278,7 +281,8 @@ def main_game(movement_info):
         elif brain.act(bird_x, bird_y, bird_vel_y, lower_pipes):
             pygame.event.pump()
             if bird_y > -2 * IMAGE["bird"][0].get_height():
-                SOUND["wing"].play()
+                if MODE != Mode.TRAIN_NOUI:
+                    SOUND["wing"].play()
                 bird_flapping = True
                 bird_vel_y = bird_flap_acc_y
 
@@ -298,13 +302,15 @@ def main_game(movement_info):
         for upper_pipe in upper_pipes:
             upper_pipe_mid_x = upper_pipe[0] + IMAGE["pipe"][0].get_width() / 2
             if upper_pipe_mid_x <= bird_mid_x < upper_pipe_mid_x + (-PIPE_VEL):
-                SOUND['point'].play()
+                if MODE != Mode.TRAIN_NOUI:
+                    SOUND['point'].play()
                 score += 1
 
                 # terminate game if max score reached
                 if score >= MAX_SCORE:
                     brain.terminate_game()
-                    return [bird_x,bird_y,bird_vel_y,bird_h_angle,upper_pipes,lower_pipes,base_x,score]
+                    print("\nMax Training Score Reached")
+                    exit(1)
 
         # bird movement
         if bird_h_angle >= bird_min_h_angle:
@@ -452,7 +458,8 @@ def bird_crashed(bird_x,bird_y,upper_pipes,lower_pipes):
 
     # if bird crashed on ground
     if bird_y + bird_height >= BASE_Y:
-        SOUND["hit"].play()
+        if MODE != Mode.TRAIN_NOUI:
+            SOUND["hit"].play()
         return True
     
     bird_sprite = Image_Sprite(bird_width,bird_height)
@@ -476,8 +483,9 @@ def bird_crashed(bird_x,bird_y,upper_pipes,lower_pipes):
         
         # using the pygame builtin sprite function
         if pygame.sprite.spritecollide(bird_sprite,all_pipes_sprites,False):
-            SOUND["hit"].play()
-            SOUND["die"].play()
+            if MODE != Mode.TRAIN_NOUI:
+                SOUND["hit"].play()
+                SOUND["die"].play()
             return True
     return False
 

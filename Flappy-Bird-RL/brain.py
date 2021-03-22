@@ -5,7 +5,7 @@ class Brain():
     def __init__(self):
         self.learning_rate = 0.7 # learning rate of the brain
         self.GAMMA = 1.0 # discount of the brain
-        self.reward = {"alive": 0,"die": -1000} # rewards for stay alive and die
+        self.reward = {"alive": 0,"die": -1000000} # rewards for stay alive and die
         self.load_qvalues() # load Q_values from json file
         self.replay_memory = [] # replay memory of the brain
         self.last_state = "0_0_0_0" # initilize state 
